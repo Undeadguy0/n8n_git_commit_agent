@@ -1,0 +1,534 @@
+{
+  "name": "Git Commit & Push Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldToSplitOut": "paths",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        752,
+        416
+      ],
+      "id": "e9162b6d-2f98-4788-931b-fcf9fb8088b0",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "command": "find /data/projects -type f -name \".branches\""
+      },
+      "type": "n8n-nodes-commander.commander",
+      "typeVersion": 1,
+      "position": [
+        304,
+        416
+      ],
+      "id": "abfca8d3-4949-42f5-9206-897d289232b6",
+      "name": "Получаем проекты с .branches"
+    },
+    {
+      "parameters": {
+        "jsCode": "const suffixLen = \"/.branches\".length\n\nconst item = $input.first();\nconst output = item.json.stdout || '';\nconst paths = output.split('\\n').filter(p => p.trim() !== '').map(st => \n  st = st.slice(0, -suffixLen));\nitem.json.paths = paths;\nreturn $input.all();      "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        416
+      ],
+      "id": "b3ce9068-5fb8-40e4-9c59-953f431c9d74",
+      "name": "Разбиваем stdout на массив путей",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        976,
+        416
+      ],
+      "id": "b4898284-6cf8-4ac3-91c0-379510f35773",
+      "name": "Проходимся по путям"
+    },
+    {
+      "parameters": {
+        "runOnce": false,
+        "command": "=cd  {{ $json.paths }} && git --no-pager diff"
+      },
+      "type": "n8n-nodes-commander.commander",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        80
+      ],
+      "id": "c8eb1746-ccf2-48d2-ace2-e2be884cc371",
+      "name": "Получает git diff"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "95ff8b18-4a77-45d9-8581-2708d3b7d6da",
+              "leftValue": "={{ $json.stdout }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1424,
+        80
+      ],
+      "id": "14b55367-a0c7-4459-92f0-2e432b0663ef",
+      "name": "git diff не пустой"
+    },
+    {
+      "parameters": {
+        "systemMessage": "Ты — опытный разработчик, который пишет информативные сообщения для коммитов Git на основе предоставленного diff. Твоя задача — понять суть изменений и сформулировать сообщение в формате JSON с двумя полями: \"subject\" и \"body\".\n\nПравила формирования сообщения:\n- \"subject\" (заголовок) — краткая фраза в формате: тип(область): краткое описание.\n  - Тип: feat, fix, docs, style, refactor, test, chore.\n  - Область (опционально): модуль, компонент, файл.\n  - Описание: не более 70 символов, отвечает на вопрос \"что сделано?\".\n- \"body\" (тело) — более подробное описание (1-2 предложения), объясняющее причину изменений, если это не очевидно. Если изменений мало или они тривиальны, тело может быть пустой строкой.\n- Сообщение ОБЯЗАНО быть на русском языке.\n- Пиши в страдательном залоге: \"добавлено\", \"изменено\", \"удалено\", \"исправлено\".\n\nПример ответа:\n{\n  \"subject\": \"feat(auth): добавить вход через Google OAuth\",\n  \"body\": \"Добавлен новый провайдер аутентификации. Настроены соответствующие middleware и маршруты.\"\n}\n\nЕсли изменений нет или diff пуст, верни пустой объект { }.\n\nНикакого лишнего текста, только JSON.",
+        "prompt": "={{ $json.stdout }}",
+        "model": {
+          "__rl": true,
+          "value": "nvidia/nemotron-3-super-120b-a12b:free",
+          "mode": "list",
+          "cachedResultName": "nvidia/nemotron-3-super-120b-a12b:free"
+        },
+        "modelOptions": {},
+        "reasoning": {},
+        "outputMode": "json_object",
+        "outputOptions": {},
+        "maxValidationAttempts": 3,
+        "repair": {},
+        "providerRouting": {},
+        "integrations": {},
+        "generation": {},
+        "advancedSampling": {}
+      },
+      "type": "n8n-nodes-openrouter-custom-v2.openrouterLlm",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        -16
+      ],
+      "id": "ae18b6a8-6d48-49fc-9b9a-d137bb2d3855",
+      "name": "LLM делает обзор изменений",
+      "credentials": {
+        "openRouterCustomV2Api": {
+          "id": "npRPS1U74zweH4UH",
+          "name": "Рабочий"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=cat {{ $('Проходимся по путям').item.json.paths + \"/.branches\" }}"
+      },
+      "type": "n8n-nodes-commander.commander",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        272
+      ],
+      "id": "511e4b8b-0000-40f2-a6be-5bafcffc8ab1",
+      "name": "Получаем цели для коммитов"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем данные\nconst item = $input.first().json;\nconst content = item.stdout || ''; // содержимое файла\nconst filePath = item.branchesPath || 'неизвестно';\n\nlet targets = [];\n\n// Если файл пустой — используем значения по умолчанию\nif (content.trim().length === 0) {\n  console.log(`${filePath} пустой, предполагаю origin/master`);\n  targets.push({ remote: 'origin', branch: 'master' });\n} else {\n  try {\n    const parsed = JSON.parse(content);\n    // Проверяем, что есть поле targets и это массив\n    if (Array.isArray(parsed.targets)) {\n      parsed.targets.forEach(obj => {\n        let remote = obj.remote;\n        let branch = obj.branch;\n\n        // Проверяем remote\n        if (remote === undefined || remote.trim().length === 0) {\n          console.log(`В файле ${filePath} у объекта нет remote, игнорируем`);\n        }\n        else{\n          // Проверяем branch\n          if (branch === undefined || branch.trim().length === 0) {\n            console.log(`В файле ${filePath} для ${remote} не указана ветка, используем master`);\n            branch = 'master';\n          }\n  \n          targets.push({ remote: remote.trim(), branch: branch.trim() });\n        }\n      });\n    } else {\n      console.log(`В файле ${filePath} нет поля targets или оно не массив`);\n    }\n  } catch (e) {\n    console.log(`Ошибка парсинга JSON в ${filePath}:`, e.message);\n    // Помечаем как невалидный\n    item.fully_unvalid = true;\n  }\n}\n\n// Если targets пустой — помечаем как невалидный\nitem.fully_unvalid = targets.length === 0;\nitem.targets = targets;\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        272
+      ],
+      "id": "184dd434-ae1a-4bcf-a083-ddd2cb3b4e2e",
+      "name": "Получаем цели для push"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "targets",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        272
+      ],
+      "id": "b542da74-418b-4ede-b323-e33dcf451928",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2544,
+        256
+      ],
+      "id": "91439cd5-277e-4658-99b7-3ec43ad70ceb",
+      "name": "Проходимся по всем целям для push"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5c58ce9b-561b-4953-b418-7ff17c7a9bc8",
+              "leftValue": "={{ $json.output.body }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1872,
+        -16
+      ],
+      "id": "6b1ba3ab-9afa-4a80-8325-60b6a4284877",
+      "name": "Тело коммита не пустое"
+    },
+    {
+      "parameters": {
+        "command": "=cd  {{ $('Проходимся по путям').item.json.paths + \"/\" }} && git add . && git commit -m \"{{\"[AUTO-PUSH] \" +  $('LLM делает обзор изменений').item.json.output.subject }}\" "
+      },
+      "type": "n8n-nodes-commander.commander",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        -112
+      ],
+      "id": "7ae326e3-e660-41f8-800f-3c76210f26f8",
+      "name": "Изменения + коммит без тела"
+    },
+    {
+      "parameters": {
+        "command": "=cd  {{ $('Проходимся по путям').item.json.paths + \"/\" }} && git add . && git commit -m \"{{\"[AUTO-PUSH] \" + $('LLM делает обзор изменений').item.json.output.subject }}\" -m \"{{ $('LLM делает обзор изменений').item.json.output.body }}\""
+      },
+      "type": "n8n-nodes-commander.commander",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        80
+      ],
+      "id": "f895ac6a-31a4-456c-b6ce-8cce577cfb19",
+      "name": "Изменения + коммит с телом"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        80,
+        416
+      ],
+      "id": "9a345eb2-f3b9-4d78-aea3-e06db962beb5",
+      "name": "Таймер раз в сутки в 18:00"
+    },
+    {
+      "parameters": {
+        "command": "=cd {{ $('Проходимся по путям').item.json.paths }} && git push --set-upstream {{ $('Split Out1').item.json.remote }} {{ $('Split Out1').item.json.branch }}"
+      },
+      "type": "n8n-nodes-commander.commander",
+      "typeVersion": 1,
+      "position": [
+        2768,
+        256
+      ],
+      "id": "28e3aef9-daf0-4834-95c6-53ee3d49c62a",
+      "name": "git push"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2320,
+        80
+      ],
+      "id": "29c84ee9-4910-4390-b5ea-1103a27bf1ec",
+      "name": "Синхронизация"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Проходимся по путям",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем проекты с .branches": {
+      "main": [
+        [
+          {
+            "node": "Разбиваем stdout на массив путей",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Разбиваем stdout на массив путей": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проходимся по путям": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Получает git diff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получает git diff": {
+      "main": [
+        [
+          {
+            "node": "git diff не пустой",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "git diff не пустой": {
+      "main": [
+        [
+          {
+            "node": "LLM делает обзор изменений",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Получаем цели для коммитов",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Проходимся по путям",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM делает обзор изменений": {
+      "main": [
+        [
+          {
+            "node": "Тело коммита не пустое",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем цели для коммитов": {
+      "main": [
+        [
+          {
+            "node": "Получаем цели для push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Получаем цели для push": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Синхронизация",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Проходимся по всем целям для push": {
+      "main": [
+        [
+          {
+            "node": "Проходимся по путям",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "git push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Тело коммита не пустое": {
+      "main": [
+        [
+          {
+            "node": "Изменения + коммит без тела",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Изменения + коммит с телом",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Изменения + коммит без тела": {
+      "main": [
+        [
+          {
+            "node": "Синхронизация",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Изменения + коммит с телом": {
+      "main": [
+        [
+          {
+            "node": "Синхронизация",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Таймер раз в сутки в 18:00": {
+      "main": [
+        [
+          {
+            "node": "Получаем проекты с .branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "git push": {
+      "main": [
+        [
+          {
+            "node": "Проходимся по всем целям для push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Синхронизация": {
+      "main": [
+        [
+          {
+            "node": "Проходимся по всем целям для push",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Moscow",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1
+  },
+  "versionId": "8f3b8d46-163f-41e7-a68a-08a3ce1f9dcc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1f57fbc291f03df461e4d81c4bfeff016b43593c1dbd0b7fb7e6ba6f35a5384e"
+  },
+  "nodeGroups": [],
+  "id": "RvagPrkDaMPYKAiw",
+  "tags": []
+}
