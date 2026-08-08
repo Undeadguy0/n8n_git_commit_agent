@@ -10,7 +10,7 @@
       "typeVersion": 1,
       "position": [
         752,
-        416
+        80
       ],
       "id": "e9162b6d-2f98-4788-931b-fcf9fb8088b0",
       "name": "Split Out"
@@ -23,7 +23,7 @@
       "typeVersion": 1,
       "position": [
         304,
-        416
+        80
       ],
       "id": "abfca8d3-4949-42f5-9206-897d289232b6",
       "name": "Получаем проекты с .branches"
@@ -36,7 +36,7 @@
       "typeVersion": 2,
       "position": [
         528,
-        416
+        80
       ],
       "id": "b3ce9068-5fb8-40e4-9c59-953f431c9d74",
       "name": "Разбиваем stdout на массив путей",
@@ -44,26 +44,13 @@
     },
     {
       "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        976,
-        416
-      ],
-      "id": "b4898284-6cf8-4ac3-91c0-379510f35773",
-      "name": "Проходимся по путям"
-    },
-    {
-      "parameters": {
         "runOnce": false,
-        "command": "=cd  {{ $json.paths }} && git --no-pager diff"
+        "command": "=cd  {{ $('Split Out').item.json.paths }}  && git --no-pager diff"
       },
       "type": "n8n-nodes-commander.commander",
       "typeVersion": 1,
       "position": [
-        1200,
+        976,
         80
       ],
       "id": "c8eb1746-ccf2-48d2-ace2-e2be884cc371",
@@ -141,7 +128,7 @@
     },
     {
       "parameters": {
-        "command": "=cat {{ $('Проходимся по путям').item.json.paths + \"/.branches\" }}"
+        "command": "=cat {{ $('Split Out').item.json.paths + \"/.branches\" }}"
       },
       "type": "n8n-nodes-commander.commander",
       "typeVersion": 1,
@@ -181,19 +168,6 @@
     },
     {
       "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        2544,
-        256
-      ],
-      "id": "91439cd5-277e-4658-99b7-3ec43ad70ceb",
-      "name": "Проходимся по всем целям для push"
-    },
-    {
-      "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
@@ -228,7 +202,7 @@
     },
     {
       "parameters": {
-        "command": "=cd  {{ $('Проходимся по путям').item.json.paths + \"/\" }} && git add . && git commit -m \"{{\"[AUTO-PUSH] \" +  $('LLM делает обзор изменений').item.json.output.subject }}\" "
+        "command": "=cd  {{ $('Split Out').item.json.paths }} && git add . && git commit -m \"{{\"[AUTO-PUSH] \" +  $('LLM делает обзор изменений').item.json.output.subject }}\" "
       },
       "type": "n8n-nodes-commander.commander",
       "typeVersion": 1,
@@ -241,7 +215,7 @@
     },
     {
       "parameters": {
-        "command": "=cd  {{ $('Проходимся по путям').item.json.paths + \"/\" }} && git add . && git commit -m \"{{\"[AUTO-PUSH] \" + $('LLM делает обзор изменений').item.json.output.subject }}\" -m \"{{ $('LLM делает обзор изменений').item.json.output.body }}\""
+        "command": "=cd  {{ $('Split Out').item.json.paths }} && git add . && git commit -m \"{{\"[AUTO-PUSH] \" + $('LLM делает обзор изменений').item.json.output.subject }}\" -m \"{{ $('LLM делает обзор изменений').item.json.output.body }}\""
       },
       "type": "n8n-nodes-commander.commander",
       "typeVersion": 1,
@@ -266,43 +240,83 @@
       "typeVersion": 1.3,
       "position": [
         80,
-        416
+        80
       ],
       "id": "9a345eb2-f3b9-4d78-aea3-e06db962beb5",
       "name": "Таймер раз в сутки в 18:00"
     },
     {
       "parameters": {
-        "command": "=cd {{ $('Проходимся по путям').item.json.paths }} && git push --set-upstream {{ $('Split Out1').item.json.remote }} {{ $('Split Out1').item.json.branch }}"
+        "runOnce": false,
+        "command": "=cd {{ $('Split Out').item.json.paths }} && git push {{ $json.remote }} {{ $json.branch }}"
       },
       "type": "n8n-nodes-commander.commander",
       "typeVersion": 1,
       "position": [
-        2768,
-        256
+        2400,
+        288
       ],
       "id": "28e3aef9-daf0-4834-95c6-53ee3d49c62a",
       "name": "git push"
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a7fabf8c-1ab9-4e04-8027-2ccf57439060",
+              "name": "stdout",
+              "value": "={{ $json.stdout }}",
+              "type": "string"
+            },
+            {
+              "id": "aa990f62-883b-4709-806f-fc2cd1dd4325",
+              "name": "paths",
+              "value": "={{ $('Split Out').item.json.paths }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "position": [
-        2320,
+        1200,
         80
       ],
-      "id": "29c84ee9-4910-4390-b5ea-1103a27bf1ec",
-      "name": "Синхронизация"
+      "id": "c88e6016-c126-4846-9cda-f9c4acdf0956",
+      "name": "Edit Fields"
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "Таймер раз в сутки в 18:00": [
+      {
+        "json": {
+          "timestamp": "2026-07-30T18:00:08.010+03:00",
+          "Readable date": "July 30th 2026, 6:00:08 pm",
+          "Readable time": "6:00:08 pm",
+          "Day of week": "Thursday",
+          "Year": "2026",
+          "Month": "July",
+          "Day of month": "30",
+          "Hour": "18",
+          "Minute": "00",
+          "Second": "08",
+          "Timezone": "Europe/Moscow (UTC+03:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
   "connections": {
     "Split Out": {
       "main": [
         [
           {
-            "node": "Проходимся по путям",
+            "node": "Получает git diff",
             "type": "main",
             "index": 0
           }
@@ -331,23 +345,11 @@
         ]
       ]
     },
-    "Проходимся по путям": {
-      "main": [
-        [],
-        [
-          {
-            "node": "Получает git diff",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Получает git diff": {
       "main": [
         [
           {
-            "node": "git diff не пустой",
+            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
@@ -368,13 +370,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Проходимся по путям",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "LLM делает обзор изменений": {
@@ -414,24 +410,6 @@
       "main": [
         [
           {
-            "node": "Синхронизация",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Проходимся по всем целям для push": {
-      "main": [
-        [
-          {
-            "node": "Проходимся по путям",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
             "node": "git push",
             "type": "main",
             "index": 0
@@ -459,24 +437,12 @@
     },
     "Изменения + коммит без тела": {
       "main": [
-        [
-          {
-            "node": "Синхронизация",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Изменения + коммит с телом": {
       "main": [
-        [
-          {
-            "node": "Синхронизация",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Таймер раз в сутки в 18:00": {
@@ -492,20 +458,14 @@
     },
     "git push": {
       "main": [
-        [
-          {
-            "node": "Проходимся по всем целям для push",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
-    "Синхронизация": {
+    "Edit Fields": {
       "main": [
         [
           {
-            "node": "Проходимся по всем целям для push",
+            "node": "git diff не пустой",
             "type": "main",
             "index": 0
           }
@@ -520,10 +480,9 @@
     "availableInMCP": false,
     "timeSavedMode": "fixed",
     "timezone": "Europe/Moscow",
-    "callerPolicy": "workflowsFromSameOwner",
-    "executionTimeout": -1
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "versionId": "8f3b8d46-163f-41e7-a68a-08a3ce1f9dcc",
+  "versionId": "90a1aa96-113f-4d08-9326-cb306bae2f29",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "1f57fbc291f03df461e4d81c4bfeff016b43593c1dbd0b7fb7e6ba6f35a5384e"
